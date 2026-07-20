@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SqlServerMcp.Server/SqlServerMcp.Server.csproj" />
+    <Project Path="src/SqlServerMCP_Client/SqlServerMcp.TestClient.csproj" />
+    <Project Path="src/SqlServerMCP_HttpClient/SqlServerMcp.WebClient.csproj" />
+  </Folder>
+</Solution>

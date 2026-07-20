@@ -1,0 +1,233 @@
+@page "/"
+@rendermode InteractiveServer
+@using System.Diagnostics
+@using System.Text.Json
+@using ModelContextProtocol.Client
+@using ModelContextProtocol.Protocol
+@inject McpToolService Mcp
+@inject IConfiguration Configuration
+
+<PageTitle>SqlServerMcp Web Client</PageTitle>
+
+<h1>SqlServerMcp Web Client</h1>
+<p class="text-muted">Connect to a running SqlServerMcp.Server over HTTP/HTTPS and run its tools.</p>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-8">
+                <label class="form-label" for="mcpUrl">MCP endpoint URL</label>
+                <input id="mcpUrl" class="form-control" @bind="_url" placeholder="https://localhost:7115/mcp" />
+            </div>
+            <div class="col-md-4">
+                @if (Mcp.IsConnected)
+                {
+                    <button class="btn btn-outline-secondary w-100" @onclick="DisconnectAsync" disabled="@_busy">Disconnect</button>
+                }
+                else
+                {
+                    <button class="btn btn-primary w-100" @onclick="ConnectAsync" disabled="@_busy">Connect</button>
+                }
+            </div>
+        </div>
+
+        @if (Mcp.IsConnected)
+        {
+            <p class="text-success mt-2 mb-0">Connected to <strong>@Mcp.ConnectedUrl</strong>. Discovered @Mcp.Tools.Count tool(s).</p>
+        }
+        @if (!string.IsNullOrEmpty(_connectionError))
+        {
+            <p class="text-danger mt-2 mb-0">@_connectionError</p>
+        }
+    </div>
+</div>
+
+@if (Mcp.IsConnected)
+{
+    <div class="row">
+        <div class="col-md-4">
+            <div class="list-group mb-4">
+                @foreach (var tool in Mcp.Tools)
+                {
+                    <button type="button"
+                            class="list-group-item list-group-item-action @(tool == _selectedTool ? "active" : string.Empty)"
+                            @onclick="() => SelectTool(tool)">
+                        @tool.Name
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            @if (_selectedTool is not null)
+            {
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span><strong>@_selectedTool.Name</strong></span>
+                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => _showSchema = !_showSchema">
+                            @(_showSchema ? "Hide schema" : "View schema")
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        @if (!string.IsNullOrWhiteSpace(_selectedTool.Description))
+                        {
+                            <p class="text-muted">@_selectedTool.Description</p>
+                        }
+
+                        @if (_showSchema)
+                        {
+                            <pre class="border rounded p-2 bg-light">@PrettySchema(_selectedTool)</pre>
+                        }
+
+                        @foreach (var field in _fields)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label">
+                                    @field.Name <span class="text-muted">(@field.Type)</span>
+                                    @if (field.Required)
+                                    {
+                                        <span class="text-danger">*</span>
+                                    }
+                                </label>
+                                @if (field.InputType == "checkbox")
+                                {
+                                    <div class="form-check">
+                                        <input type="checkbox" class="form-check-input"
+                                               checked="@(string.Equals(field.RawValue, "true", StringComparison.OrdinalIgnoreCase))"
+                                               @onchange="e => field.RawValue = ((bool)(e.Value ?? false)).ToString().ToLowerInvariant()" />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <input type="@field.InputType" class="form-control" @bind="field.RawValue" />
+                                }
+                                @if (!string.IsNullOrWhiteSpace(field.Description))
+                                {
+                                    <div class="form-text">@field.Description</div>
+                                }
+                            </div>
+                        }
+
+                        <button class="btn btn-success" @onclick="InvokeToolAsync" disabled="@_busy">
+                            @(_busy ? "Calling..." : "Call tool")
+                        </button>
+
+                        @if (_elapsedMs is not null)
+                        {
+                            <span class="text-muted ms-2">Completed in @_elapsedMs ms.</span>
+                        }
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_invokeError))
+                {
+                    <div class="alert alert-danger">Call failed: @_invokeError</div>
+                }
+
+                @if (_result is not null)
+                {
+                    <div class="card">
+                        <div class="card-header">Result</div>
+                        <div class="card-body">
+                            <ResultView Result="_result" />
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <p class="text-muted">Select a tool from the list to get started.</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private string _url = string.Empty;
+    private bool _busy;
+    private string? _connectionError;
+    private string? _invokeError;
+    private McpClientTool? _selectedTool;
+    private List<ToolArgumentField> _fields = new();
+    private bool _showSchema;
+    private CallToolResult? _result;
+    private long? _elapsedMs;
+
+    protected override void OnInitialized()
+    {
+        _url = Configuration["McpClient:Url"] ?? "http://localhost:5143/mcp";
+    }
+
+    private async Task ConnectAsync()
+    {
+        _connectionError = null;
+        _busy = true;
+        try
+        {
+            await Mcp.ConnectAsync(_url);
+        }
+        catch (Exception ex)
+        {
+            _connectionError = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DisconnectAsync()
+    {
+        await Mcp.DisconnectAsync();
+        _selectedTool = null;
+        _fields = new();
+        _result = null;
+    }
+
+    private void SelectTool(McpClientTool tool)
+    {
+        _selectedTool = tool;
+        _fields = ToolArgumentField.FromSchema(tool.JsonSchema);
+        _result = null;
+        _invokeError = null;
+        _elapsedMs = null;
+        _showSchema = false;
+    }
+
+    private async Task InvokeToolAsync()
+    {
+        if (_selectedTool is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _invokeError = null;
+        _result = null;
+        var arguments = ToolArgumentField.BuildArguments(_fields);
+
+        try
+        {
+            var stopwatch = Stopwatch.StartNew();
+            _result = await Mcp.CallToolAsync(_selectedTool.Name, arguments);
+            stopwatch.Stop();
+            _elapsedMs = stopwatch.ElapsedMilliseconds;
+        }
+        catch (Exception ex)
+        {
+            _invokeError = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string PrettySchema(McpClientTool tool)
+    {
+        var raw = tool.JsonSchema.GetRawText();
+        return JsonSerializer.Serialize(
+            JsonDocument.Parse(raw).RootElement,
+            new JsonSerializerOptions { WriteIndented = true });
+    }
+}

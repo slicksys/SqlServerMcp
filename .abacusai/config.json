@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd D:\\Projects\\SqlServerMcp && dotnet package search ModelContextProtocol --take 10 2>&1)",
+      "Bash(cd D:\\Projects\\SqlServerMcp && dotnet new sln -n SqlServerMcp 2>&1\ndotnet new web -n SqlServerMcp.Server -o src\\SqlServe…)",
+      "Bash(cd D:\\Projects\\SqlServerMcp && dotnet new web -n SqlServerMcp.Server -o src\\SqlServerMcp.Server)",
+      "Bash(cd D:\\Projects\\SqlServerMcp && dotnet sln add src\\SqlServerMcp.Server\\SqlServerMcp.Server.csproj)",
+      "Bash(cd D:\\Projects\\SqlServerMcp && dotnet --list-sdks)",
+      "Bash(cd D:\\Projects\\SqlServerMcp && dotnet new list 2>&1 | findstr -i \"web console\" )",
+      "Bash(cd D:\\Projects\\SqlServerMcp && dotnet new sln -n SqlServerMcp && dotnet new web -n SqlServerMcp.Server -o src\\SqlServerM…)",
+      "Bash(cd D:\\Projects\\SqlServerMcp\\src\\SqlServerMcp.Server && dotnet add package ModelContextProtocol.AspNetCore 2>&1 | tail -3…)",
+      "Bash(cd D:\\Projects\\SqlServerMcp\\src\\SqlServerMcp.Server && dotnet add package ModelContextProtocol.AspNetCore)",
+      "Bash(rg -n 'ConnectionStrings|DefaultConnection|connection string|Server=|Data Source=' 'd:\\Projects\\SqlServerMcp')",
+      "Bash(rg --files --glob '**/AGENTS.md' 'd:\\Projects\\SqlServerMcp' --sort modified)",
+      "Bash(dir /s /b d:\\Projects\\SqlServerMcp\\AGENTS.md)",
+      "Bash(powershell -NoProfile -Command \"Get-ChildItem -Path 'd:\\Projects\\SqlServerMcp' -Filter AGENTS.md -Recurse -File | Select…)",
+      "Bash(dir /s /b d:\\Projects\\SqlServerMcp\\*.*)"
+    ]
+  }
+}
