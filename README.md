@@ -1,10 +1,10 @@
 # SqlServerMcp
 
-An MCP (Model Context Protocol) server that gives coding/LOB-design agents fast, read-only
+  An MCP (Model Context Protocol) server that gives coding/LOB-design agents fast, read-only
 access to a SQL Server database's `INFORMATION_SCHEMA` / `sys.*` metadata — schemas, tables,
 columns, keys, indexes, relationships, extended-property descriptions — plus small data
-previews and safe ad-hoc `SELECT` queries. Built for exploring an existing database to decide
-table structures for a line-of-business app.
+previews and safe ad-hoc `SELECT` queries. Built for exploring and analysing existing database
+for ETL or migration purposes, or for generating table structures for feature additions.
 
 ## Tools
 
