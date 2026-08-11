@@ -188,17 +188,30 @@ public sealed class SchemaExplorerTools(ISqlConnectionFactory connectionFactory)
                 i.is_unique AS IsUnique,
                 i.is_primary_key AS IsPrimaryKey,
                 i.is_unique_constraint AS IsUniqueConstraint,
-                STRING_AGG(CASE WHEN ic.is_included_column = 0
-                                THEN c.name + CASE WHEN ic.is_descending_key = 1 THEN ' DESC' ELSE '' END
-                           END, ', ') WITHIN GROUP (ORDER BY ic.key_ordinal) AS KeyColumns,
-                STRING_AGG(CASE WHEN ic.is_included_column = 1 THEN c.name END, ', ') AS IncludedColumns
+                STUFF((
+                    SELECT ', ' + c2.name + CASE WHEN ic2.is_descending_key = 1 THEN ' DESC' ELSE '' END
+                    FROM sys.index_columns ic2
+                    JOIN sys.columns c2 ON c2.object_id = ic2.object_id AND c2.column_id = ic2.column_id
+                    WHERE ic2.object_id = i.object_id
+                      AND ic2.index_id = i.index_id
+                      AND ic2.is_included_column = 0
+                    ORDER BY ic2.key_ordinal
+                    FOR XML PATH(''), TYPE
+                ).value('.', 'nvarchar(max)'), 1, 2, '') AS KeyColumns,
+                STUFF((
+                    SELECT ', ' + c3.name
+                    FROM sys.index_columns ic3
+                    JOIN sys.columns c3 ON c3.object_id = ic3.object_id AND c3.column_id = ic3.column_id
+                    WHERE ic3.object_id = i.object_id
+                      AND ic3.index_id = i.index_id
+                      AND ic3.is_included_column = 1
+                    ORDER BY ic3.key_ordinal
+                    FOR XML PATH(''), TYPE
+                ).value('.', 'nvarchar(max)'), 1, 2, '') AS IncludedColumns
             FROM sys.indexes i
             JOIN sys.tables t ON i.object_id = t.object_id
             JOIN sys.schemas s ON t.schema_id = s.schema_id
-            JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
-            JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
             WHERE s.name = @schema AND t.name = @table AND i.type > 0
-            GROUP BY i.name, i.type_desc, i.is_unique, i.is_primary_key, i.is_unique_constraint
             ORDER BY i.is_primary_key DESC, i.name
             """;
 

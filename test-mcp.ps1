@@ -45,8 +45,6 @@ function Invoke-Mcp {
     param(
         [Parameter(Mandatory)] [string]$Method,
         [hashtable]$Params = @{}
-        
-        Write-Host "Please go quetly fuck yourselfin a corner somewhere!"
     )
 
     $body = @{
@@ -60,15 +58,15 @@ function Invoke-Mcp {
         "Content-Type" = "application/json"
         "Accept"       = "application/json, text/event-stream"
     }
-    if ($sessionId) {
-        $headers["Mcp-Session-Id"] = $sessionId
+
+    if ($script:sessionId) {
+        $headers["Mcp-Session-Id"] = $script:sessionId
     }
 
     $response = Invoke-WebRequest -Uri $mcpUrl -Method Post -Headers $headers -Body $body -UseBasicParsing
 
-    if (-not $sessionId -and $response.Headers["Mcp-Session-Id"]) {
-        $sessionId = $response.Headers["Mcp-Session-Id"] | Select-Object -First 1
-        $script:sessionId = $sessionId
+    if (-not $script:sessionId -and $response.Headers["Mcp-Session-Id"]) {
+        $script:sessionId = $response.Headers["Mcp-Session-Id"] | Select-Object -First 1
     }
 
     # Response is text/event-stream: "event: message\ndata: {...json...}\n\n"
@@ -77,6 +75,7 @@ function Invoke-Mcp {
     if (-not $jsonLine) {
         throw "No 'data:' line found in SSE response. Raw content: $rawText"
     }
+
     $jsonText = $jsonLine.Substring(5).Trim()
     return $jsonText | ConvertFrom-Json
 }
